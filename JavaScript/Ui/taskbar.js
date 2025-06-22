@@ -111,11 +111,11 @@ export function initTaskbar() {
         <div id="taskbar-apps" class="flex items-center gap-1 ml-2"></div>
       </div>
       <div class="taskbar-right">
-        <i class="ri-wifi-fill text-lg"></i>
-        <i class="ri-battery-2-fill text-lg"></i>
-        <i class="ri-volume-up-fill text-lg"></i>
+        <i id="wifi-icon" class="ri-wifi-fill text-lg cursor-pointer"></i>
+        <i id="battery-icon" class="ri-battery-2-fill text-lg cursor-pointer"></i>
+        <i id="sound-icon" class="ri-volume-up-fill text-lg cursor-pointer"></i>
         <span class="ml-2 text-xs">99%</span>
-        <div id="taskbar-clock" class="px-3 py-1 rounded glass text-sm"></div>
+        <div id="taskbar-clock" class="px-3 py-1 rounded glass text-sm cursor-pointer"></div>
       </div>
     </div>
   `;
@@ -132,4 +132,103 @@ export function initTaskbar() {
   updateClock();
   setInterval(updateClock, 1000);
   updateTaskbarApps();
+
+  // Calendar popup logic
+  const clock = document.getElementById("taskbar-clock");
+  const calendar = document.getElementById("calendar-popup");
+  clock.onclick = (e) => {
+    e.stopPropagation();
+    renderCalendar(calendar);
+    calendar.classList.toggle("hidden");
+  };
+  document.addEventListener("click", (e) => {
+    if (!calendar.classList.contains("hidden")) {
+      calendar.classList.add("hidden");
+    }
+  });
+  calendar.addEventListener("click", (e) => e.stopPropagation());
+
+  // Quick Settings Panel logic
+  const quickPanel = document.getElementById("quick-settings-panel");
+  function toggleQuickPanel(e) {
+    e.stopPropagation();
+    renderQuickSettings(quickPanel);
+    quickPanel.classList.toggle("hidden");
+  }
+  document.getElementById("wifi-icon").onclick = toggleQuickPanel;
+  document.getElementById("battery-icon").onclick = toggleQuickPanel;
+  document.getElementById("sound-icon").onclick = toggleQuickPanel;
+  document.addEventListener("click", () => {
+    if (!quickPanel.classList.contains("hidden"))
+      quickPanel.classList.add("hidden");
+  });
+  quickPanel.addEventListener("click", (e) => e.stopPropagation());
+}
+
+function renderCalendar(container) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const days = [];
+  for (let i = 0; i < firstDay; i++) days.push("");
+  for (let d = 1; d <= daysInMonth; d++) days.push(d);
+  container.innerHTML = `
+    <div class="glass rounded-xl shadow-xl p-4 w-80">
+      <div class="flex justify-between items-center mb-2">
+        <span class="font-semibold text-lg text-white">${now.toLocaleString(
+          "default",
+          { month: "long" }
+        )} ${year}</span>
+        <i class="ri-calendar-2-line text-xl text-white"></i>
+      </div>
+      <div class="grid grid-cols-7 gap-1 text-center text-white">
+        <div>Su</div><div>Mo</div><div>Tu</div><div>We</div><div>Th</div><div>Fr</div><div>Sa</div>
+        ${days.map((d) => `<div class="py-1">${d ? d : ""}</div>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderQuickSettings(container) {
+  container.innerHTML = `
+    <div class="glass rounded-xl shadow-xl p-4 w-[380px]">
+      <div class="grid grid-cols-3 gap-2 mb-3">
+        <button class="bg-blue-500/80 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-wifi-fill text-2xl mb-1"></i><span class="text-xs">Available</span></button>
+        <button class="bg-blue-500/80 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-bluetooth-fill text-2xl mb-1"></i><span class="text-xs">Not connected</span></button>
+        <button class="bg-gray-700/40 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-flight-mode-line text-2xl mb-1"></i><span class="text-xs">Airplane mode</span></button>
+        <button class="bg-gray-700/40 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-leaf-fill text-2xl mb-1"></i><span class="text-xs">Energy saver</span></button>
+        <button class="bg-gray-700/40 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-moon-clear-fill text-2xl mb-1"></i><span class="text-xs">Night light</span></button>
+        <button class="bg-gray-700/40 text-white rounded-lg flex flex-col items-center py-2"><i class="ri-accessibility-line text-2xl mb-1"></i><span class="text-xs">Accessibility</span></button>
+      </div>
+      <div class="border-t border-white/10 my-2"></div>
+      <div class="flex flex-col gap-4">
+        <div class="flex items-center gap-2">
+          <i class="ri-sun-line text-xl text-white"></i>
+          <input id="brightness-slider" type="range" min="10" max="100" value="100" class="flex-1 accent-blue-500" />
+        </div>
+        <div class="flex items-center gap-2">
+          <i class="ri-volume-up-line text-xl text-white"></i>
+          <input id="volume-slider" type="range" min="0" max="100" value="100" class="flex-1 accent-blue-500" />
+        </div>
+      </div>
+      <div class="flex items-center justify-between mt-4">
+        <span class="flex items-center gap-1 text-green-400"><i class="ri-battery-2-fill"></i>99%</span>
+        <i class="ri-settings-3-line text-xl text-white cursor-pointer"></i>
+      </div>
+    </div>
+  `;
+  // Brightness slider demo: adjust wallpaper brightness
+  const brightness = container.querySelector("#brightness-slider");
+  brightness.oninput = (e) => {
+    document.getElementById(
+      "desktop-bg"
+    ).style.filter = `brightness(${e.target.value}%)`;
+  };
+  // Volume slider demo: just a UI effect (no real sound)
+  const volume = container.querySelector("#volume-slider");
+  volume.oninput = (e) => {
+    // You can hook this to a real audio element if needed
+  };
 }

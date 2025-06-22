@@ -48,13 +48,24 @@ export function initDesktop() {
   });
   // Double-click to open window
   desktop.querySelectorAll(".desktop-icon").forEach((icon) => {
-    icon.addEventListener("dblclick", (e) => {
+    icon.addEventListener("dblclick", async (e) => {
       const app = icon.getAttribute("data-app");
       const id = icon.getAttribute("data-id");
       const iconPath = icon.getAttribute("data-icon");
       const title = icon.querySelector("span").textContent;
-      const content = getAppContent(app, id);
-      openWindow(app, { title, content, icon: iconPath });
+      let content =
+        '<div class="flex items-center justify-center h-64"><i class="ri-loader-4-line animate-spin text-3xl text-blue-400"></i></div>';
+      if (app === "explorer") {
+        // Show loading spinner, then fetch template
+        const winId = openWindow(app, { title, content, icon: iconPath });
+        content = await getAppContent(app, id);
+        // Update window content after fetch
+        const win = document.getElementById(winId);
+        if (win) win.querySelector(".window-content").innerHTML = content;
+      } else {
+        content = await getAppContent(app, id);
+        openWindow(app, { title, content, icon: iconPath });
+      }
     });
   });
 }

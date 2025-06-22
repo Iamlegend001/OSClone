@@ -8,15 +8,19 @@ export function makeDraggableResizable(win) {
     offsetX = e.clientX - win.offsetLeft;
     offsetY = e.clientY - win.offsetTop;
     document.body.style.userSelect = "none";
-  });
-  document.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-    win.style.left = e.clientX - offsetX + "px";
-    win.style.top = e.clientY - offsetY + "px";
-  });
-  document.addEventListener("mouseup", () => {
-    isDragging = false;
-    document.body.style.userSelect = "";
+    function onMove(ev) {
+      if (!isDragging) return;
+      win.style.left = ev.clientX - offsetX + "px";
+      win.style.top = ev.clientY - offsetY + "px";
+    }
+    function onUp() {
+      isDragging = false;
+      document.body.style.userSelect = "";
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    }
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
   });
 
   // Add resize handles
