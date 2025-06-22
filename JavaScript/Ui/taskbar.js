@@ -1,107 +1,135 @@
-function setupTaskbar() {
-  const taskbar = document.getElementById("taskbar");
-  const desktop = document.getElementById("desktop");
+let openApps = [];
+let activeWindowId = null;
 
-  // Taskbar HTML
+const pinnedApps = [
+  {
+    app: "explorer",
+    icon: "<i class='ri-folder-3-fill text-2xl'></i>",
+    title: "Explorer",
+  },
+  {
+    app: "terminal",
+    icon: "<i class='ri-terminal-box-fill text-2xl'></i>",
+    title: "Terminal",
+  },
+];
+
+export function addTaskbarApp(app, id, icon) {
+  if (!openApps.some((a) => a.id === id)) {
+    openApps.push({ app, id, icon });
+    updateTaskbarApps();
+  }
+}
+
+export function removeTaskbarApp(id) {
+  openApps = openApps.filter((a) => a.id !== id);
+  updateTaskbarApps();
+}
+
+export function setActiveTaskbarApp(id) {
+  activeWindowId = id;
+  updateTaskbarApps();
+}
+
+function updateTaskbarApps() {
+  const appsContainer = document.getElementById("taskbar-apps");
+  if (!appsContainer) return;
+  // For each pinned app, check if it's open and active
+  appsContainer.innerHTML = pinnedApps
+    .map((pinned) => {
+      const open = openApps.find((a) => a.app === pinned.app);
+      const isActive = open && open.id === activeWindowId;
+      return `
+      <div class="relative flex flex-col items-center">
+        <button class="w-10 h-10 flex items-center justify-center rounded ${
+          isActive ? "bg-white/10" : "hover:bg-white/20"
+        } transition taskbar-pinned" data-app="${pinned.app}" data-icon="${
+        pinned.icon
+      }" ${open ? `data-window-id="${open.id}"` : ""}>
+          ${pinned.icon}
+        </button>
+        <div class="h-1 mt-1 w-2 rounded-full ${
+          open ? "bg-blue-500" : ""
+        }"></div>
+      </div>
+    `;
+    })
+    .join("");
+  // Add click listeners to pinned app buttons
+  appsContainer.querySelectorAll(".taskbar-pinned").forEach((btn) => {
+    btn.onclick = () => {
+      const app = btn.getAttribute("data-app");
+      const icon = btn.getAttribute("data-icon");
+      const winId = btn.getAttribute("data-window-id");
+      // If already open, focus it
+      if (winId) {
+        window.dispatchEvent(
+          new CustomEvent("openApp", {
+            detail: {
+              app,
+              title: pinnedApps.find((p) => p.app === app).title,
+              icon,
+              id: winId,
+            },
+          })
+        );
+      } else {
+        // Open new window
+        window.dispatchEvent(
+          new CustomEvent("openApp", {
+            detail: {
+              app,
+              title: pinnedApps.find((p) => p.app === app).title,
+              icon,
+            },
+          })
+        );
+      }
+    };
+  });
+}
+
+export function initTaskbar() {
+  const taskbar = document.getElementById("taskbar");
   taskbar.innerHTML = `
-    <div class="taskbar-left">
-      <div class="weather-widget" id="weatherWidget">
-        <i class="ri-sun-cloudy-line weather-icon"></i>
-        <span class="weather-temp">28°C</span>
-        <span class="weather-cond">Haze</span>
+    <div id="taskbar-inner">
+      <div class="taskbar-left">
+        <div class="flex items-center gap-2 px-3 py-1 rounded glass text-sm">
+          <i class="ri-cloudy-fill text-xl"></i>
+          <span>31°C</span>
+          <span class="text-xs text-blue-600">Heavy rain</span>
+        </div>
       </div>
-    </div>
-    <div class="taskbar-center">
-      <img src="./assets/Icons/Start1.png" id="startBtn" class="taskbar-icon" alt="Start" title="Start" />
-      <div class="search-box" id="searchBox">
-        <i class="ri-search-line"></i>
-        <span>Search</span>
+      <div class="taskbar-center">
+        <button id="start-btn" class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20 transition">
+          <i class="ri-windows-fill text-2xl"></i>
+        </button>
+        <div class="flex items-center bg-white/10 px-4 py-1 rounded-full glass min-w-[180px] max-w-[260px]">
+          <i class="ri-search-line text-lg mr-2 opacity-70"></i>
+          <span class="text-gray-700 dark:text-gray-200 opacity-70 text-sm">Search web & PC</span>
+        </div>
+        <div id="taskbar-apps" class="flex items-center gap-1 ml-2"></div>
       </div>
-      <img src="./assets/Icons/folder1.png" id="fileIcon" class="taskbar-icon" alt="File Explorer" title="File Explorer" />
-      <img src="./assets/Icons/terminal.png" id="terminalIcon" class="taskbar-icon" alt="Terminal" title="Terminal" />
-    </div>
-    <div class="taskbar-right">
-      <div class="system-tray">
-        <i class="ri-wifi-line" title="Wi-Fi"></i>
-        <i class="ri-volume-up-line" title="Sound"></i>
-        <i class="ri-battery-2-fill" title="Battery"></i>
-        <div id="clock" class="taskbar-clock"></div>
+      <div class="taskbar-right">
+        <i class="ri-wifi-fill text-lg"></i>
+        <i class="ri-battery-2-fill text-lg"></i>
+        <i class="ri-volume-up-fill text-lg"></i>
+        <span class="ml-2 text-xs">99%</span>
+        <div id="taskbar-clock" class="px-3 py-1 rounded glass text-sm"></div>
       </div>
     </div>
   `;
-
-  // Start Menu Popup
-  let startMenu = document.getElementById("startMenu");
-  if (!startMenu) {
-    startMenu = document.createElement("div");
-    startMenu.id = "startMenu";
-    startMenu.className = "start-menu hidden";
-    startMenu.innerHTML = `<div>Start Menu Content</div>`;
-    desktop.appendChild(startMenu);
-  }
-
-  // Search Popup
-  let searchWindow = document.getElementById("searchWindow");
-  if (!searchWindow) {
-    searchWindow = document.createElement("div");
-    searchWindow.id = "searchWindow";
-    searchWindow.className = "search-window hidden";
-    searchWindow.innerHTML = `
-      <div class="search-header">
-        <input type="text" placeholder="Search apps, settings, files..." />
-      </div>
-      <div class="search-content">
-        <div class="search-section">
-          <h3>Recent</h3>
-          <div class="search-items"></div>
-        </div>
-      </div>`;
-    desktop.appendChild(searchWindow);
-  }
-
   // Clock
   function updateClock() {
     const now = new Date();
-    const clock = document.getElementById("clock");
-    clock.innerText = now.toLocaleTimeString([], {
+    const time = now.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
+    const date = now.toLocaleDateString();
+    document.getElementById("taskbar-clock").textContent = `${time} | ${date}`;
   }
   updateClock();
   setInterval(updateClock, 1000);
-
-  // Event Listeners
-  document.getElementById("startBtn").addEventListener("click", (e) => {
-    e.stopPropagation();
-    startMenu.classList.toggle("hidden");
-    searchWindow.classList.add("hidden");
-  });
-
-  document.getElementById("searchBox").addEventListener("click", (e) => {
-    e.stopPropagation();
-    searchWindow.classList.toggle("hidden");
-    startMenu.classList.add("hidden");
-  });
-
-  desktop.addEventListener("click", () => {
-    startMenu.classList.add("hidden");
-    searchWindow.classList.add("hidden");
-  });
-
-  document.getElementById("fileIcon").addEventListener("click", () => {
-    windowManager.createWindow({
-      id: "fileWindow",
-      title: "File Explorer",
-      body: "<div>Welcome to File Manager</div>",
-    });
-  });
-
-  document.getElementById("terminalIcon").addEventListener("click", () => {
-    windowManager.createWindow({
-      id: "terminalWindow",
-      title: "Terminal",
-      body: `<div class=\"terminal-body\" style=\"background-color: #000; color: #0f0; height: 100%; font-family: monospace; padding: 5px;\">C:\\Users\\Guest&gt;</div>`,
-    });
-  });
+  updateTaskbarApps();
 }
