@@ -1,184 +1,151 @@
-import { makeDraggableResizable } from "./dragResize.js";
 import { getAppContent } from "../apps.js";
-import {
-  addTaskbarApp,
-  removeTaskbarApp,
-  setActiveTaskbarApp,
-} from "../Ui/taskbar.js";
-
-let zIndexCounter = 100;
-const windowState = {};
 
 export function openWindow(app, options = {}) {
-  // Prevent duplicate windows for the same app/title
-  const existing = findWindowByTitle(options.title || app);
-  if (existing) {
-    if (windowState[existing.id].minimized) {
-      existing.style.display = "";
-      windowState[existing.id].minimized = false;
-    }
-    focusWindow(existing.id);
-    return existing.id;
+  const { title = app, icon = "", content = "" } = options;
+
+  // If window already exists, focus it
+  const existingWindow = document.querySelector(`.window[data-app="${app}"]`);
+  if (existingWindow) {
+    existingWindow.style.zIndex = getNextZIndex();
+    existingWindow.classList.remove("minimized");
+    return existingWindow.id;
   }
 
-  const container = document.getElementById("window-container");
-  const id = `window-${Date.now()}`;
   const windowDiv = document.createElement("div");
   windowDiv.className = "window";
-  windowDiv.id = id;
-  windowDiv.setAttribute("data-window-id", id);
-  windowDiv.style.zIndex = ++zIndexCounter;
-  // Set initial position and size
-  windowDiv.style.left = "160px";
-  windowDiv.style.top = "80px";
-  windowDiv.style.width = "420px";
-  windowDiv.style.height = "320px";
-  windowDiv.style.position = "absolute";
+  windowDiv.dataset.app = app;
+  windowDiv.style.zIndex = getNextZIndex();
+  windowDiv.id = `window-${app}-${Date.now()}`;
+
   windowDiv.innerHTML = `
-    <div class="window-titlebar flex items-center justify-between">
-      <span>${options.title || app}</span>
-      <div class="flex gap-1">
-        <button class="minimize" data-window-id="${id}"><i class="ri-subtract-line"></i></button>
-        <button class="maximize" data-window-id="${id}"><i class="ri-checkbox-blank-line"></i></button>
-        <button class="close" data-window-id="${id}"><i class="ri-close-line"></i></button>
+    <div class="window-titlebar">
+      <span class="window-icon">${icon}</span>
+      <span class="window-title">${title}</span>
+      <div class="window-controls">
+        <button class="minimize">_</button>
+        <button class="maximize">▢</button>
+        <button class="close">×</button>
       </div>
     </div>
-    <div class="window-content p-4">${options.content || ""}</div>
+    <div class="window-content">Loading...</div>
   `;
-  // Close button
-  windowDiv.querySelector(".close").onclick = (e) => {
-    e.stopPropagation();
-    closeWindow(id);
-  };
-  // Minimize button
-  windowDiv.querySelector(".minimize").onclick = (e) => {
-    e.stopPropagation();
-    minimizeWindow(id);
-  };
-  // Maximize button
-  windowDiv.querySelector(".maximize").onclick = (e) => {
-    e.stopPropagation();
-    maximizeWindow(id);
-  };
-  // Focus on click
-  windowDiv.onclick = () => focusWindow(id);
+
+  const container =
+    document.getElementById("window-container") || document.body;
   container.appendChild(windowDiv);
-  makeDraggableResizable(windowDiv);
-  focusWindow(id);
-  // Add to taskbar
-  if (options.icon) {
-    addTaskbarApp(app, id, options.icon);
-  }
-  setActiveTaskbarApp(id);
 
-  // Store initial state
-  windowState[id] = {
-    minimized: false,
-    maximized: false,
-    prev: null,
-    title: options.title || app,
-  };
+  // Load app content
+  loadAppContent(windowDiv, app);
 
-  // Folder/file navigation for explorer
-  if (app === "explorer") {
-    windowDiv
-      .querySelector(".window-content")
-      .addEventListener("click", (e) => {
-        const target = e.target.closest("[data-type]");
-        if (!target) return;
-        const type = target.getAttribute("data-type");
-        const folderId = target.getAttribute("data-id");
-        if (type === "folder") {
-          const content = getAppContent("explorer", folderId);
-          windowDiv.querySelector(".window-content").innerHTML = content;
-        } else if (type === "file") {
-          windowDiv.querySelector(
-            ".window-content"
-          ).innerHTML = `<div class='p-4'>Preview of <b>${target.textContent.trim()}</b></div>`;
-        }
-      });
-  }
+  // Drag functionality (optional but assumed in your UI)
+  makeWindowDraggable(windowDiv);
 
-  return id;
-}
+  // Controls
+  const closeBtn = windowDiv.querySelector(".close");
+  const minimizeBtn = windowDiv.querySelector(".minimize");
+  const maximizeBtn = windowDiv.querySelector(".maximize");
 
-function findWindowByTitle(title) {
-  const wins = document.querySelectorAll(".window");
-  for (let win of wins) {
-    const span = win.querySelector(".window-titlebar span");
-    if (span && span.textContent === title) return win;
-  }
-  return null;
-}
-
-export function closeWindow(id) {
-  const win = document.getElementById(id);
-  if (win) win.remove();
-  removeTaskbarApp(id);
-  delete windowState[id];
-}
-
-export function focusWindow(id) {
-  const win = document.getElementById(id);
-  if (win) win.style.zIndex = ++zIndexCounter;
-  setActiveTaskbarApp(id);
-}
-
-export function minimizeWindow(id) {
-  const win = document.getElementById(id);
-  if (win) {
-    win.style.display = "none";
-    windowState[id].minimized = true;
-  }
-}
-
-export function maximizeWindow(id) {
-  const win = document.getElementById(id);
-  if (!win) return;
-  const state = windowState[id];
-  if (!state.maximized) {
-    // Store previous size/position
-    state.prev = {
-      left: win.style.left,
-      top: win.style.top,
-      width: win.style.width,
-      height: win.style.height,
-      position: win.style.position,
-    };
-    win.style.left = "0";
-    win.style.top = "0";
-    win.style.width = "100vw";
-    win.style.height = "calc(100vh - 56px)";
-    win.style.position = "fixed";
-    state.maximized = true;
-  } else {
-    // Restore previous size/position
-    if (state.prev) {
-      win.style.left = state.prev.left;
-      win.style.top = state.prev.top;
-      win.style.width = state.prev.width;
-      win.style.height = state.prev.height;
-      win.style.position = state.prev.position;
+  closeBtn.addEventListener("click", () => windowDiv.remove());
+  minimizeBtn.addEventListener("click", () => {
+    windowDiv.classList.add("minimized");
+  });
+  maximizeBtn.addEventListener("click", () => {
+    if (windowDiv.classList.contains("maximized")) {
+      windowDiv.classList.remove("maximized");
+      windowDiv.style.left = windowDiv.dataset.prevLeft || "";
+      windowDiv.style.top = windowDiv.dataset.prevTop || "";
+      windowDiv.style.width = windowDiv.dataset.prevWidth || "";
+      windowDiv.style.height = windowDiv.dataset.prevHeight || "";
+    } else {
+      windowDiv.dataset.prevLeft = windowDiv.style.left;
+      windowDiv.dataset.prevTop = windowDiv.style.top;
+      windowDiv.dataset.prevWidth = windowDiv.style.width;
+      windowDiv.dataset.prevHeight = windowDiv.style.height;
+      windowDiv.classList.add("maximized");
+      windowDiv.style.left = 0;
+      windowDiv.style.top = 0;
+      windowDiv.style.width = "100vw";
+      windowDiv.style.height = "calc(100vh - 56px)";
     }
-    state.maximized = false;
+  });
+
+  // Focus on click
+  windowDiv.addEventListener("mousedown", () => {
+    windowDiv.style.zIndex = getNextZIndex();
+    windowDiv.classList.remove("minimized");
+  });
+
+  return windowDiv.id;
+}
+
+// Set z-index incrementally
+let zIndexCounter = 100;
+function getNextZIndex() {
+  return ++zIndexCounter;
+}
+
+async function loadAppContent(windowDiv, app, folderId = null) {
+  const contentDiv = windowDiv.querySelector(".window-content");
+
+  contentDiv.innerHTML = `<div class="flex items-center justify-center h-32">
+    <i class="ri-loader-4-line animate-spin text-3xl text-blue-500"></i>
+  </div>`;
+
+  try {
+    const content = await getAppContent(app, folderId);
+    contentDiv.innerHTML = content;
+
+    if (app === "explorer") {
+      bindExplorerEvents(windowDiv);
+    }
+  } catch (error) {
+    contentDiv.innerHTML = `<div class="p-4 text-red-500 text-center">Failed to load content</div>`;
+    console.error("App Load Error:", error);
   }
 }
 
-// Listen for taskbar app click to restore minimized windows or focus by window ID
-window.addEventListener("openApp", (e) => {
-  const { app, title, icon, id } = e.detail;
-  let win = null;
-  if (id) {
-    win = document.getElementById(id);
-  } else {
-    win = findWindowByTitle(title);
-  }
-  if (win) {
-    const winId = win.id;
-    if (windowState[winId].minimized) {
-      win.style.display = "";
-      windowState[winId].minimized = false;
+function bindExplorerEvents(windowDiv) {
+  const contentDiv = windowDiv.querySelector(".window-content");
+
+  contentDiv.addEventListener("click", async (e) => {
+    const target = e.target.closest("[data-type]");
+    if (!target) return;
+
+    const type = target.getAttribute("data-type");
+    const id = target.getAttribute("data-id");
+
+    if (type === "folder") {
+      await loadAppContent(windowDiv, "explorer", id);
+    } else if (type === "file") {
+      contentDiv.innerHTML = `<div class='p-4'>Preview of <b>${target.textContent.trim()}</b></div>`;
     }
-    focusWindow(winId);
-  }
-});
+  });
+}
+
+function makeWindowDraggable(windowDiv) {
+  let isDragging = false;
+  let offsetX, offsetY;
+
+  const titlebar = windowDiv.querySelector(".window-titlebar");
+  titlebar.style.cursor = "move";
+
+  titlebar.addEventListener("mousedown", (e) => {
+    isDragging = true;
+    offsetX = e.clientX - windowDiv.offsetLeft;
+    offsetY = e.clientY - windowDiv.offsetTop;
+    windowDiv.style.position = "absolute";
+    windowDiv.style.userSelect = "none";
+  });
+
+  document.addEventListener("mousemove", (e) => {
+    if (isDragging) {
+      windowDiv.style.left = `${e.clientX - offsetX}px`;
+      windowDiv.style.top = `${e.clientY - offsetY}px`;
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+    windowDiv.style.userSelect = "auto";
+  });
+}

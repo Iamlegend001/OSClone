@@ -138,6 +138,19 @@ $color-taskbar-dark: rgba(30, 34, 44, 0.7);
   border: 2px solid $color-accent;
 }
 
+.window.minimized {
+  display: none;
+}
+
+.window.maximized {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 56px) !important;
+  border-radius: 0 !important;
+  transition: all 0.2s;
+}
+
 // Title Bar
 .window-titlebar {
   height: 36px;

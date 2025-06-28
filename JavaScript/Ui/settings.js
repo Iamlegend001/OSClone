@@ -5,5 +5,5 @@ export function setTheme(theme) {
 
 export function loadWallpaper() {
   const bg = document.getElementById("desktop-bg");
-  bg.style.backgroundImage = "url('Assets/Wallpapers/wall1.jpg')";
+  bg.style.backgroundImage = "url('https://4kwallpapers.com/images/walls/thumbs_3t/22807.jpg')";
 }

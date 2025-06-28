@@ -53,15 +53,22 @@ export function initDesktop() {
       const id = icon.getAttribute("data-id");
       const iconPath = icon.getAttribute("data-icon");
       const title = icon.querySelector("span").textContent;
+      console.log("Double-clicked icon:", { app, id, iconPath, title });
       let content =
         '<div class="flex items-center justify-center h-64"><i class="ri-loader-4-line animate-spin text-3xl text-blue-400"></i></div>';
       if (app === "explorer") {
         // Show loading spinner, then fetch template
         const winId = openWindow(app, { title, content, icon: iconPath });
+        console.log("Called openWindow for explorer, winId:", winId);
         content = await getAppContent(app, id);
         // Update window content after fetch
         const win = document.getElementById(winId);
-        if (win) win.querySelector(".window-content").innerHTML = content;
+        if (win) {
+          win.querySelector(".window-content").innerHTML = content;
+          console.log("Updated window content for winId:", winId);
+        } else {
+          console.warn("Window not found for winId:", winId);
+        }
       } else {
         content = await getAppContent(app, id);
         openWindow(app, { title, content, icon: iconPath });

@@ -120,6 +120,19 @@
   border: 2px solid #2563eb;
 }
 
+.window.minimized {
+  display: none;
+}
+
+.window.maximized {
+  left: 0 !important;
+  top: 0 !important;
+  width: 100vw !important;
+  height: calc(100vh - 56px) !important;
+  border-radius: 0 !important;
+  transition: all 0.2s;
+}
+
 .window-titlebar {
   height: 36px;
   display: flex;
